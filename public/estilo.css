@@ -1,0 +1,103 @@
+body {
+    background-color: rgb(50, 50, 50);
+    font-family: sans-serif;
+    align-items: center;
+}
+.container {
+    display: flex;
+    flex-direction: column;
+}
+#titulo {
+    color: white;
+    border-bottom: 1px solid gray;
+    margin: 20px;
+    font-size: 50px;
+    text-align: center;
+    justify-content: center;
+}
+#form {
+    font-size: 20px;
+    display: flex;
+    flex-direction: row;
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+.input {
+    margin-right: 50px;
+    color: white;
+}
+.input input {
+    color: white;
+    background-color: gray;
+    font-size: 18px;
+    padding-top: 5px;
+    padding-left: 5px;
+    padding-bottom: 5px;
+    border-radius: 15px;
+}
+.input input::placeholder {
+    color: rgb(50, 50, 50);
+    font-size: 18px;
+    justify-content: center;
+    padding-left: 3px;
+}
+.input select {
+    font-size: 18px;
+    color: rgb(41, 41, 41);
+    padding-left: 3px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+#buscador {
+    display: flex;
+    flex-direction: row;
+    border-bottom: 1px solid gray;
+    align-items: center;
+    justify-content: center;
+    margin: 20px;
+}
+#grilla {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    padding: 45px;
+}
+.objeto {
+    margin: 30px;
+    color: white;
+    align-items: center;
+}
+.objeto img {
+    width: 100%;
+    height: auto;
+}
+#buscar {
+    margin-right: 10px;
+    margin-left: 20px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    font-size: 25px;
+    background-color: rgb(41, 41, 41);
+    color: white;
+    border-radius: 5px;
+    border-style: inherit;
+}
+#departamento, #localizacion {
+    background-color: rgb(41, 41, 41);
+    color: white;
+    border-radius: 5px;
+}
+#footer {
+    display: flex;
+    flex-direction: row;
+    border-top: 1px solid gray;
+    align-items: center;
+    justify-content: center;
+    margin: 20px;
+}
+#paginacion objeto {
+    margin: 10px;
+    padding: 10px;
+    color: white;
+    background-color: gray;
+    border-radius: 5px;
+}
