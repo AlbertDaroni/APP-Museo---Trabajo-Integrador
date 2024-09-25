@@ -55,10 +55,12 @@ async function cargarLocalizaciones() {
 
 
 // MOSTRAR TODOS LOS OBJETOS (con imagen supuestamente) (20 por página)    ---------------------------------------------------------------------------------------------------------------\\
+const items = new Array(200);
 fetch(urlBusqueda)
 .then((response) => response.json())
 .then((data) => {
     mostrarObjetos(data.objectIDs.slice(0, 20));
+    items.fill(data.objectIDs);
 })
 .catch((error) => {console.log(error);});
 
@@ -69,6 +71,7 @@ async function mostrarObjetos(objectIDs) {
         .then((response) => response.json())
         .then(async (data) => {
             const imagen = data.primaryImage ? data.primaryImage : data.primaryImageSmall;
+            let fechaCreacion = data.objectDate ? data.objectDate : "Fecha desconocida";
             let tituloTraducido = 'Sin título';
             let culturaTraducida = 'Sin datos';
             let dinastiaTraducida = 'Sin datos';
@@ -76,14 +79,18 @@ async function mostrarObjetos(objectIDs) {
             if(data.title) tituloTraducido = await traducirTexto(data.title);
             if(data.culture) culturaTraducida = await traducirTexto(data.culture);
             if(data.dynasty) dinastiaTraducida = await traducirTexto(data.dynasty);
-
+            
             objetosHTML += 
             `<div class="objeto">
-            <img src="${imagen ? imagen : "sin_imagen.png"}"/>
+            <img src="${imagen ? imagen : "sin_imagen.png"}" title="Creación: ${fechaCreacion}"/>
             <h4 class="titulo"><strong>Título:</strong> ${tituloTraducido}</h4>
             <h5 class="cultura"><strong>Cultura:</strong> ${culturaTraducida}</h5>
             <h5 class="dinastia"><strong>Dinastía:</strong> ${dinastiaTraducida}</h5>
             </div>`;
+            
+            if (data.additionalImages && data.additionalImages.length > 0) {
+                objetosHTML += `<button onclick="verMasImagenes(${objectID})">Ver más imágenes</button>`;
+            }
             
             const grilla = document.getElementById('grilla');
             grilla.innerHTML = objetosHTML;
@@ -114,8 +121,8 @@ document.getElementById('buscar').addEventListener('click', async (evento) => {
     })
     .catch((error) => {console.log(error);});
     
-    let consulta = 'https://collectionapi.metmuseum.org/public/collection/v1/search?q=&hasImages=true';
-    if(clave) consulta = `https://collectionapi.metmuseum.org/public/collection/v1/search?q=${clave}&hasImages=true`;
+    let consulta = 'https://collectionapi.metmuseum.org/public/collection/v1/search?hasImages=true';
+    if(clave) consulta += `&q=${clave}`;
     if(id_Departamento) consulta += `&departmentId=${id_Departamento}`;
     if(localizacion) consulta += `&geoLocation=${localizacion}`;
 
@@ -128,5 +135,49 @@ document.getElementById('buscar').addEventListener('click', async (evento) => {
     });
 });
 
+
+// PAGINACIÓN ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------\\
+let pagina = 1;
+
+function objetosPaginaActual(pagina) {
+    const inicio = (pagina - 1) * 20;
+    const final = inicio + 20;
+    return items.slice(inicio, final);
+}
+
+function renderItems(pagina) {
+    const container = document.getElementById('paginacion');
+    container.innerHTML = '';
+    const objetosActuales = objetosPaginaActual(pagina);
+
+    mostrarObjetos(objetosActuales.slice(0, 20));
+}
+
+function actualizarFooter() {
+    const numeroPagina = document.getElementById('numeroPagina');
+    numeroPagina.textContent = `${pagina}`;
+
+    document.getElementById('anterior').disabled = pagina === 1;
+    document.getElementById('siguiente').disabled = pagina === 10;
+}
+
+function avanzar() {
+    if (pagina < 10) {
+        pagina++;
+        renderItems(pagina);
+        actualizarFooter();
+    }
+}
+
+function retroceder() {
+    if (pagina > 1) {
+        pagina--;
+        renderItems(pagina);
+        actualizarFooter();
+    }
+}
+
 obtenerDepartamentos();
 cargarLocalizaciones();
+avanzar();
+retroceder();

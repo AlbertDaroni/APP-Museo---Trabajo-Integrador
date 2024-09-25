@@ -79,7 +79,6 @@ body {
     background-color: rgb(41, 41, 41);
     color: white;
     border-radius: 5px;
-    border-style: inherit;
 }
 #departamento, #localizacion {
     background-color: rgb(41, 41, 41);
@@ -87,17 +86,24 @@ body {
     border-radius: 5px;
 }
 #footer {
-    display: flex;
-    flex-direction: row;
     border-top: 1px solid gray;
     align-items: center;
     justify-content: center;
     margin: 20px;
 }
-#paginacion objeto {
+#paginacion {
+    display: flex;
+    flex-direction: row;
+    margin: 5px;
+    padding: 5px;
+    background-color: rgb(50, 50, 50);
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+}
+#anterior, #numeroPagina, #siguiente {
+    color: white;
     margin: 10px;
     padding: 10px;
-    color: white;
-    background-color: gray;
-    border-radius: 5px;
+    background-color: black;
 }
