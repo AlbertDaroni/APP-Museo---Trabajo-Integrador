@@ -3,9 +3,14 @@ const urlObjeto = 'https://collectionapi.metmuseum.org/public/collection/v1/obje
 const urlBusqueda = 'https://collectionapi.metmuseum.org/public/collection/v1/search?q=&hasImages=true';
 const urlPaises = 'https://restcountries.com/v3.1/all';
 
+const grilla = document.getElementById('grilla');
+let numeroPaginaTexto = document.getElementById('numeroPagina');
+numeroPaginaTexto.textContent = '1';
+let numeroPaginaValor = parseInt(document.getElementById('numeroPagina').value);
+let cards = new Array(200);
+
 // BUSCAR   ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\\
-document.getElementById('buscar').addEventListener('click', async (evento) => {
-    evento.preventDefault();
+document.getElementById('buscar').addEventListener('click', async () => {
     const clave = document.getElementById('clave').value.trim();
     const departamento = document.getElementById('departamento').value;
     const localizacion = document.getElementById('localizacion').value.trim();
@@ -27,111 +32,119 @@ document.getElementById('buscar').addEventListener('click', async (evento) => {
         .then((response) => response.json())
         .then((data) => {
             if (data.objectIDs && data.objectIDs.length > 0) {
-                guardarObjeto(data.objectIDs);
+                guardarObjetos(data.objectIDs); // Acá quizás es solamente "data"
+            } else {
+                alert("No se encontraron objetos.");
+                document.getElementById('grilla').innerHTML = '<p>No se encontraron resultados.</p>';
             }
         })
         .catch((error) => { console.log("Error en la búsqueda.", error); });;
 });
 
-// OBTENER TODOS LOS OBJETOS (con imagen supuestamente) ----------------------------------------------------------------------------------------------------------------------------------\\
-let objetos = new Array(200);
-
-async function obtener200Objetos() {
+// OBTENER OBJETOS ÚTILES ----------------------------------------------------------------------------------------------------------------------------------------------------------------\\
+async function obtenerObjetos() {
     await fetch(urlBusqueda)
         .then((response) => response.json())
         .then((data) => {
-            guardarObjeto(data.objectIDs);
+            guardarObjetos(data.objectIDs);
         })
         .catch((error) => { console.log("Error al obtener los objetos.", error); });
 }
 
-async function guardarObjeto(objectIDs) {
-    let imagenes = false;
+async function guardarObjetos(objectIDs) {
+    grilla.innerHTML = '';
+    cards = [];
+    let elementosValidos = 0;
 
-    for (let objectID of objectIDs) {
-        await fetch(urlObjeto + objectID)
-            .then((response) => response.json())
-            .then(async (data) => {
+    for (const id of objectIDs) {
+        if (elementosValidos >= 200) break;
+
+        const response = await fetch(urlObjeto + id);
+        if (response.status === 200) {
+            const data = await response.json();
+
+            if (data.primaryImage && data.title && data.culture && data.dynasty) {
                 const imagen = data.primaryImage || data.primaryImageSmall || "sin_imagen.png";
                 const fechaCreacion = data.objectDate ? data.objectDate : "Fecha desconocida";
                 let tituloTraducido = 'Sin título';
                 let culturaTraducida = 'Sin datos';
                 let dinastiaTraducida = 'Sin datos';
 
-                if (data.title && data.title != '') tituloTraducido = await traducirTexto(data.title);
-                if (data.culture && data.culture != '') culturaTraducida = await traducirTexto(data.culture);
-                if (data.dynasty && data.dynasty != '') dinastiaTraducida = await traducirTexto(data.dynasty);
-                if (data.additionalImages && data.additionalImages.length > 0) imagenes = true;
+                if (data.title) tituloTraducido = await traducirTexto(data.title);
+                if (data.culture) culturaTraducida = await traducirTexto(data.culture);
+                if (data.dynasty) dinastiaTraducida = await traducirTexto(data.dynasty);
 
-                if (imagen && titulo && cultura && dinastia) {
-                    objetos.push(`
+                let card = `
                     <div class="card">
                         <img src="${imagen}" title="Creación: ${fechaCreacion}"/>
                         <h4 class="titulo"><strong>Título:</strong> ${tituloTraducido}</h4>
                         <h5 class="cultura"><strong>Cultura:</strong> ${culturaTraducida}</h5>
-                        <h5 class="dinastia"><strong>Dinastía:</strong> ${dinastiaTraducida}</h5>
-                    </div>`);
-                } else if (imagen && imagenes && titulo && cultura && dinastia) {
-                    objetos.push(`
-                    <div class="card">
-                        <img src="${imagen}" title="Creación: ${fechaCreacion}"/>
-                        <h4 class="titulo"><strong>Título:</strong> ${tituloTraducido}</h4>
-                        <h5 class="cultura"><strong>Cultura:</strong> ${culturaTraducida}</h5>
-                        <h5 class="dinastia"><strong>Dinastía:</strong> ${dinastiaTraducida}</h5>
-                        <button class="masImagenes" onclick="verMasImagenes(${data.additionalImages})">Ver más imágenes</button>
-                    </div>`);
+                        <h5 class="dinastia"><strong>Dinastía:</strong> ${dinastiaTraducida}</h5>`;
+
+                if (data.additionalImages && data.additionalImages.length > 0) {
+                    card += `<button class="masImagenes" onclick="verMasImagenes('${data.additionalImages.join(',')}')">Ver más imágenes</button>`;
                 }
-            })
-            .catch((error) => { console.log("Error al guardar un objeto.", error); });
-    }
+                card += `</div>`;
 
-    objetosPaginaActual(pagina, objetos);
+                cards.push(card);
+                elementosValidos++;
+
+                if (cards.length % 20 === 0) {
+                    objetosPaginaActual();
+                }
+            }
+        }
+    }
+    objetosPaginaActual();
 }
 
-function verMasImagenes(imagenes) {
-    const grilla = document.getElementById('grilla').innerHTML = '';
-    imagenes.forEach((imagen) => {
-        grilla.innerHTML = imagen;
+function verMasImagenes(imagenesString) {
+    const arregloImagenes = imagenesString.split(',');
+    grilla.innerHTML = '';
+
+    arregloImagenes.forEach((imagen) => {
+        grilla.innerHTML += `<img scr="${imagen}" class="imagenesAdicionales" />`;
     });
 }
 
-// PAGINACIÓN ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------\\
-let pagina = 1;
+function objetosPaginaActual() {
+    grilla.innerHTML = '';
+    const inicio = (numeroPaginaValor - 1) * 20;
+    const final = Math.min(inicio + 20, cards.length);
 
+    for (let i = inicio; i < final; i++) {
+        if (cards[i]) {
+            grilla.innerHTML += cards[i];
+        }
+    }
+
+    actualizarFooter();
+}
+
+// PAGINACIÓN ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------\\
 function avanzar() {
-    if (pagina < 10) {
-        pagina++;
-        objetosPaginaActual(pagina, objetos);
-        actualizarFooter(pagina);
+    if (numeroPaginaValor < 10) {
+        numeroPaginaValor++;
+        numeroPaginaTexto.textContent = `${numeroPaginaValor}`;
+        objetosPaginaActual();
+        actualizarFooter();
     }
 }
 
 function retroceder() {
-    if (pagina > 1) {
-        pagina--;
-        objetosPaginaActual(pagina, objetos);
-        actualizarFooter(pagina);
+    if (numeroPaginaValor > 1) {
+        numeroPaginaValor--;
+        numeroPaginaTexto.textContent = `${numeroPaginaValor}`;
+        objetosPaginaActual();
+        actualizarFooter();
     }
 }
 
-function objetosPaginaActual(pagina, objetos) {
-    const grilla = document.getElementById('grilla')
-    grilla.innerHTML = '';
-    const inicio = (pagina - 1) * 20;
-    const final = inicio + 20;
-    for (let i = inicio; i < final; i++) {
-        grilla.innerHTML = objetos[i];
-    }
+
+function actualizarFooter() {
+    document.getElementById('anterior').hidden = (numeroPaginaValor === 1);
+    document.getElementById('siguiente').hidden = (numeroPaginaValor * 20 >= cards.length);
 }
-
-function actualizarFooter(pagina) {
-    const numeroPagina = document.getElementById('numeroPagina');
-
-    if (pagina === 0) document.getElementById('anterior').hidden = true; else document.getElementById('anterior').hidden = false;
-    if (pagina === 10) document.getElementById('siguiente').hidden = true; else document.getElementById('siguiente').hidden = false
-    numeroPagina.textContent = `${pagina}`;
-}
-
 
 // CARGAR DEPARTAMENTOS   ----------------------------------------------------------------------------------------------------------------------------------------------------------------\\
 async function obtenerDepartamentos() {
@@ -153,7 +166,6 @@ async function obtenerDepartamentos() {
         departamentoSelect.appendChild(option);
     });
 }
-
 
 // CARGAR TODOS LOS PAÍSES ---------------------------------------------------------------------------------------------------------------------------------------------------------------\\
 async function cargarLocalizaciones() {
@@ -183,7 +195,6 @@ async function cargarLocalizaciones() {
         .catch((error) => { console.log('Error al cargar los países.', error); });
 }
 
-
 // TRADUCCIÓN ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------\\
 async function traducirTexto(texto) {
     const respuesta = await fetch(`/traducir?texto=${encodeURIComponent(texto)}`);
@@ -191,9 +202,12 @@ async function traducirTexto(texto) {
     return data.traduccion;
 }
 
-obtenerDepartamentos();
-cargarLocalizaciones();
-obtener200Objetos();
+// Llamar a estas funciones al cargar la página
+window.onload = async function () {
+    await obtenerDepartamentos();
+    await cargarLocalizaciones();
+    await obtenerObjetos();
+}
 
 
 
@@ -201,6 +215,7 @@ obtener200Objetos();
 
 
 
+// Parte I
 
 // MOSTRAR TODOS LOS OBJETOS (con imagen supuestamente) (20 por página)    ---------------------------------------------------------------------------------------------------------------\\
 /*const items = new Array(200);
@@ -253,3 +268,49 @@ async function mostrarObjetos(objectIDs) {
             .catch((error) => { console.log(error); });
     }
 }*/
+
+
+
+// Parte II
+
+/*
+const fetchPromises = objectIDs.map(id => fetch(urlObjeto + id).then(response => response.json()));
+    const objetos = await Promise.all(fetchPromises);
+
+    objetos.forEach(async (data) => {
+        const imagen = data.primaryImage || data.primaryImageSmall || "sin_imagen.png";
+        const fechaCreacion = data.objectDate ? data.objectDate : "Fecha desconocida";
+        let tituloTraducido = 'Sin título';
+        let culturaTraducida = 'Sin datos';
+        let dinastiaTraducida = 'Sin datos';
+
+        if (data.title && data.title != '') tituloTraducido = await traducirTexto(data.title); titulo = true;
+        if (data.culture && data.culture != '') culturaTraducida = await traducirTexto(data.culture); cultura = true;
+        if (data.dynasty && data.dynasty != '') dinastiaTraducida = await traducirTexto(data.dynasty); dinastia = true;
+        if (data.additionalImages && data.additionalImages.length > 0) imagenes = true;
+
+        if (imagen && titulo && cultura && dinastia) {
+            card += `
+                <div class="card">
+                    <img src="${imagen}" title="Creación: ${fechaCreacion}"/>
+                    <h4 class="titulo"><strong>Título:</strong> ${tituloTraducido}</h4>
+                    <h5 class="cultura"><strong>Cultura:</strong> ${culturaTraducida}</h5>
+                    <h5 class="dinastia"><strong>Dinastía:</strong> ${dinastiaTraducida}</h5>
+                </div>`;
+        } else if (imagen && imagenes && titulo && cultura && dinastia) {
+            card += `
+                <div class="card">
+                    <img src="${imagen}" title="Creación: ${fechaCreacion}"/>
+                    <h4 class="titulo"><strong>Título:</strong> ${tituloTraducido}</h4>
+                    <h5 class="cultura"><strong>Cultura:</strong> ${culturaTraducida}</h5>
+                    <h5 class="dinastia"><strong>Dinastía:</strong> ${dinastiaTraducida}</h5>
+                    <button class="masImagenes" onclick="verMasImagenes(${data.additionalImages})">Ver más imágenes</button>
+                </div>`;
+        }
+        cards.push(card);
+
+        if (cards.length === objectIDs.length) {
+            objetosPaginaActual();
+        }
+    });
+*/
