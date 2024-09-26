@@ -59,14 +59,13 @@ body {
 #grilla {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    padding: 45px;
+    margin: 10px;
 }
-.objeto {
+.card {
     margin: 30px;
     color: white;
-    align-items: center;
 }
-.objeto img {
+.card img {
     width: 100%;
     height: auto;
 }
@@ -105,5 +104,5 @@ body {
     color: white;
     margin: 10px;
     padding: 10px;
-    background-color: black;
+    background-color: mediumturquoise;
 }

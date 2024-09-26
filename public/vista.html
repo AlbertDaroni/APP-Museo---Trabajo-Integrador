@@ -14,19 +14,15 @@
             <form action="" method="post" id="form">
                 <div class="input">
                     <label for="departamento">Departamento</label>
-                    <select name="departamento" id="departamento">
-                        <option value="">Seleccione una opción</option>
-                    </select>
+                    <select name="departamento" id="departamento"></select>
                 </div>
                 <div class="input">
                     <label for="clave">Nombre</label>
-                    <input type="text" name="clave" id="clave" placeholder="Nombre del departamento">
+                    <input type="text" name="clave" id="clave" placeholder="Clave">
                 </div>
                 <div class="input">
                     <label for="localizacion">Localización</label>
-                    <select name="localizacion" id="localizacion">
-                        <option value="">Seleccione una opción</option>
-                    </select>
+                    <select name="localizacion" id="localizacion"></select>
                 </div>
                 <button type="submit" id="buscar">Buscar</button>
             </form>
@@ -34,9 +30,9 @@
         <div id="grilla"></div>
         <footer id="footer">
             <div id="paginacion">
-                <button id="anterior" onclick="retroceder()"><</button>
+                <button id="anterior" onclick="retroceder()"> Anterior</button>
                 <span id="numeroPagina"></span>
-                <button id="siguiente" onclick="avanzar()">></button>
+                <button id="siguiente" onclick="avanzar()">Siguiente</button>
             </div>
         </footer>
     </div>
