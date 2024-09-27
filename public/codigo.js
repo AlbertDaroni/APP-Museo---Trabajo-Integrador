@@ -9,7 +9,7 @@ let numeroPaginaValor = parseInt(numeroPaginaTexto);
 const cardsUnicas = new Set();
 
 // BUSCAR   ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\\
-document.getElementById('buscar').addEventListener('submit', async (evento) => {
+document.getElementById('form').addEventListener('submit', async (evento) => {
     evento.preventDefault();
     const clave = document.getElementById('clave').value.trim();
     const departamento = document.getElementById('departamento').value;
@@ -29,21 +29,29 @@ document.getElementById('buscar').addEventListener('submit', async (evento) => {
         localizacion
     };
 
-    const response = await fetch('/buscar', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams(consulta).toString()
-    });
+    try {
+        const response = await fetch('/buscar', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams(consulta).toString()
+        });
 
-    const data = await response.json();
+        if (!response.ok) {
+            throw new Error(`Error en la solicitud: ${response.statusText}`);
+        }
 
-    if (data.success && data.objectIDs) {
-        mostrarObjetos(data.objectIDs);
-    } else {
-        alert(data.message || "No se encontraron objetos.");
-        document.getElementById('grilla').innerHTML = '<p>No se encontraron resultados.</p>';
+        const data = await response.json();
+
+        if (data.success && data.objectIDs) {
+            mostrarObjetos(data.objectIDs);
+        } else {
+            alert(data.message || "No se encontraron objetos.");
+        }
+    } catch (error) {
+        console.error('Error al realizar la búsqueda:', error);
+        alert('Hubo un problema al realizar la búsqueda.');
     }
 });
 
@@ -156,8 +164,11 @@ async function obtenerDepartamentos() {
         }))
     );
     departamentosTraducidos.sort((a, b) => a.nombreTraducido.localeCompare(b.nombreTraducido));
-
+    
     const departamentoSelect = document.getElementById('departamento');
+    const option = document.createElement('option');
+    option.value = ''; option.textContent = '';
+    departamentoSelect.appendChild(option);
     departamentosTraducidos.forEach((dep) => {
         const option = document.createElement('option');
         option.value = dep.id;
@@ -172,6 +183,9 @@ async function cargarLocalizaciones() {
         .then((response) => response.json())
         .then((data) => {
             const localizacion = document.getElementById('localizacion');
+            const option = document.createElement('option');
+            option.value = ''; option.textContent = '';
+            localizacion.appendChild(option);
 
             data.sort((a, b) => {
                 const paisA = a.translations?.spa?.common || a.name.common;
