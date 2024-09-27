@@ -5,14 +5,15 @@ const urlPaises = 'https://restcountries.com/v3.1/all';
 const grilla = document.getElementById('grilla');
 let numeroPaginaTexto = document.getElementById('numeroPagina').textContent = '1';
 let numeroPaginaValor = parseInt(numeroPaginaTexto);
-const cardsUnicas = new Set();
+const cards = new Set();
 
 // BUSCAR   ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\\
 document.getElementById('form').addEventListener('submit', async (evento) => {
     evento.preventDefault();
-    const clave = document.getElementById('clave') || 'flowers';
-    const departamento = document.getElementById('departamento');
-    const localizacion = document.getElementById('localizacion');
+
+    const clave = document.getElementById('clave')?.value || 'flowers';
+    const departamento = document.getElementById('departamento')?.value;
+    const localizacion = document.getElementById('localizacion')?.value;
     document.getElementById('numeroPagina').innerText = '1';
     actualizarFooter();
 
@@ -37,11 +38,12 @@ document.getElementById('form').addEventListener('submit', async (evento) => {
     console.log(consulta);
 
     await fetch(consulta)
-    .then((response) => response.json())
-    .then((data) => {
-        if (data.objectIDs) mostrarObjetos(data.objectIDs, data.total); else alert("No se encontraron resultados");
-    })
-    .catch((error) => { console.log("Error al hacer la consulta en la búsqueda.", error); });
+        .then((response) => response.json())
+        .then((data) => {
+            if (data.objectIDs) mostrarObjetos(data.objectIDs);
+            else alert("No se encontraron resultados");
+        })
+        .catch((error) => { console.log("Error al hacer la consulta en la búsqueda.", error); });
 });
 
 // OBTENER OBJETOS ÚTILES ----------------------------------------------------------------------------------------------------------------------------------------------------------------\\
@@ -49,22 +51,26 @@ async function obtenerObjetos() {
     await fetch('https://collectionapi.metmuseum.org/public/collection/v1/search?q=&hasImages=true')
         .then((response) => response.json())
         .then((data) => {
-            if (data.objectIDs) mostrarObjetos(data.objectIDs, data.total);
+            for (let index = 0; index < 6; index++) {
+                if (i != 6) setInterval(mostrarObjetos(data.objectIDs.slice(0, 20)), 5000);
+            }
         })
         .catch((error) => { console.log("Error al obtener los objetos.", error); });
 }
 
-async function mostrarObjetos(objectIDs, total) {
+async function mostrarObjetos(objectIDs) {
     grilla.innerHTML = '';
-    cardsUnicas.clear(); console.log("Total: ", total, "Objeto: ", objectIDs);
+    cards.clear();
+    console.log("Total: ", objectIDs.length);
 
-    for (let i = 0; i < total; i++) {
-        for (const id of objectIDs) {
-        if (cardsUnicas.size >= 200) break;
+    for (let i = 0; i < objectIDs.length; i++) {
+        if (cards.size >= 200) break;
+
+        const id = objectIDs[i];
 
         const response = await fetch(urlObjeto + id).catch((error) => { console.log(error); });
         if (response.status === 200) {
-            const data = await response.json();
+            const data = await response.json(); console.log(data.length);
 
             const imagen = data.primaryImage || data.primaryImageSmall || "sin_imagen.png";
             const fechaCreacion = data.objectDate ? data.objectDate : "Fecha desconocida";
@@ -84,40 +90,35 @@ async function mostrarObjetos(objectIDs, total) {
                 <h5 class="dinastia"><strong>Dinastía:</strong> ${dinastiaTraducida}</h5>`;
 
             if (data.additionalImages && data.additionalImages.length > 0) {
-                const imagenes = data.additionalImages;
-                card += `<button class="masImagenes" onclick="verMasImagenes(${imagenes})">Ver más imágenes</button>`;
+                const imagenes = data.additionalImages.join(',');
+                card += `<button class="masImagenes" onclick="verMasImagenes('${imagenes}')">Ver más imágenes</button>`;
             }
             card += `</div>`;
 
-            cardsUnicas.add(card);
-
-            if (cardsUnicas.size === total) break;
-            objetosPaginaActual();
+            if (![...cards].some(cardExistente => cardExistente === card)) cards.add(card);
+            if (cards.size % 20 === 0) objetosPaginaActual();
         }
     }
-}
-    objetosPaginaActual();
+    if (cards.size < 20) objetosPaginaActual();
 }
 
 function verMasImagenes(imagenes) {
     grilla.innerHTML = '';
-
     imagenes.split(',').forEach((imagen) => {
         grilla.innerHTML += `<img scr="${imagen || "sin_imagen.png"}" class="imagenesAdicionales" />`;
     });
 }
 
 function objetosPaginaActual() {
+    actualizarFooter();
     grilla.innerHTML = '';
+    const cardsArreglo = Array.from(cards);
     const inicio = (numeroPaginaValor - 1) * 20;
     const final = inicio + 20;
-    const cards = [...cardsUnicas];
 
     for (let i = inicio; i < final; i++) {
-        if (cards[i]) grilla.innerHTML += cards[i];
+        if (cardsArreglo[i]) grilla.innerHTML += cardsArreglo[i];
     }
-
-    actualizarFooter();
 }
 
 // PAGINACIÓN ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------\\
@@ -141,15 +142,17 @@ function retroceder() {
 
 
 function actualizarFooter() {
-    if (cardsUnicas.length >= 20) {
-        document.getElementById('numeroPagina').hidden = true;
-        document.getElementById('anterior').hidden = true;
-        document.getElementById('siguiente').hidden = true;
+    const paginasTotales = Math.ceil(cards.size / 20);
+
+    if (cards.size <= 20) {
+        document.getElementById('footer').style.display = 'none';
+    } else {
+        document.getElementById('footer').style.display = 'block';
     }
 
     document.getElementById('numeroPagina').innerText = `${numeroPaginaValor}`;
     document.getElementById('anterior').hidden = (numeroPaginaValor === 1);
-    document.getElementById('siguiente').hidden = (numeroPaginaValor === 10);
+    document.getElementById('siguiente').hidden = (numeroPaginaValor >= paginasTotales);
 }
 
 // CARGAR DEPARTAMENTOS   ----------------------------------------------------------------------------------------------------------------------------------------------------------------\\
@@ -163,7 +166,7 @@ async function obtenerDepartamentos() {
         }))
     );
     departamentosTraducidos.sort((a, b) => a.nombreTraducido.localeCompare(b.nombreTraducido));
-    
+
     const departamentoSelect = document.getElementById('departamento');
     const option = document.createElement('option');
     option.value = ''; option.textContent = '';
@@ -214,7 +217,7 @@ async function traducirTexto(texto) {
     return data.traduccion;
 }
 
-// Llamar a estas funciones al cargar la página
+// Llamar a estas funciones para ejecutarse primero al cargar la página
 window.onload = async function () {
     await obtenerDepartamentos();
     await cargarLocalizaciones();
