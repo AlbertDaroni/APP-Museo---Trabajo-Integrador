@@ -1,6 +1,5 @@
 const urlDepartamentos = 'https://collectionapi.metmuseum.org/public/collection/v1/departments';
 const urlObjeto = 'https://collectionapi.metmuseum.org/public/collection/v1/objects/'; // Para buscar un objeto (Necesita un ID (int))
-const urlBusqueda = 'https://collectionapi.metmuseum.org/public/collection/v1/search?q=&hasImages=true';
 const urlPaises = 'https://restcountries.com/v3.1/all';
 
 const grilla = document.getElementById('grilla');
@@ -11,64 +10,56 @@ const cardsUnicas = new Set();
 // BUSCAR   ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\\
 document.getElementById('form').addEventListener('submit', async (evento) => {
     evento.preventDefault();
-    const clave = document.getElementById('clave').value.trim();
-    const departamento = document.getElementById('departamento').value;
-    const localizacion = document.getElementById('localizacion').value.trim();
+    const clave = document.getElementById('clave') || 'flowers';
+    const departamento = document.getElementById('departamento');
+    const localizacion = document.getElementById('localizacion');
+    document.getElementById('numeroPagina').innerText = '1';
+    actualizarFooter();
 
-    const id_Departamento = await fetch(urlDepartamentos)
-        .then((response) => response.json())
-        .then((data) => {
-            const departamentoEncontrado = data.departments.find((dep) => dep.departmentId == departamento);
-            return departamentoEncontrado ? departamentoEncontrado.departmentId : null;
-        })
-        .catch((error) => { console.log("Error al buscar departamentos.", error); });
-
-    let consulta = {
-        clave,
-        departamento: id_Departamento,
-        localizacion
-    };
-
-    try {
-        const response = await fetch('/buscar', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams(consulta).toString()
-        });
-
-        if (!response.ok) {
-            throw new Error(`Error en la solicitud: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-
-        if (data.success && data.objectIDs) {
-            mostrarObjetos(data.objectIDs);
-        } else {
-            alert(data.message || "No se encontraron objetos.");
-        }
-    } catch (error) {
-        console.error('Error al realizar la búsqueda:', error);
-        alert('Hubo un problema al realizar la búsqueda.');
+    let consulta = `https://collectionapi.metmuseum.org/public/collection/v1/search?`;
+    if (clave.value && !departamento.value && !localizacion.value) {
+        consulta += `q=${clave.value}&hasImages=true`;
+    } else if (!clave.value && departamento.value && !localizacion.value) {
+        consulta += `q=&hasImages=true&departmentId=${departamento.value}`;
+    } else if (!clave.value && !departamento.value && localizacion.value) {
+        consulta += `q=&hasImages=true&geoLocation=${localizacion.value}`;
+    } else if (clave.value && departamento.value && !localizacion.value) {
+        consulta += `q=${clave.value}&hasImages=true&departmentId=${departamento.value}`;
+    } else if (!clave.value && departamento.value && localizacion.value) {
+        consulta += `q=&hasImages=true&departmentId=${departamento.value}&geoLocation=${localizacion.value}`;
+    } else if (clave.value && !departamento.value && localizacion.value) {
+        consulta += `q=${clave.value}&hasImages=true&geoLocation=${localizacion.value}`;
+    } else if (clave.value && departamento.value && localizacion.value) {
+        consulta += `q=${clave.value}&hasImages=true&departmentId=${departamento.value}&geoLocation=${localizacion.value}`;
+    } else {
+        consulta += `q=&hasImages=true`;
     }
+    console.log(consulta);
+
+    await fetch(consulta)
+    .then((response) => response.json())
+    .then((data) => {
+        if (data.objectIDs) mostrarObjetos(data.objectIDs, data.total); else alert("No se encontraron resultados");
+    })
+    .catch((error) => { console.log("Error al hacer la consulta en la búsqueda.", error); });
 });
 
 // OBTENER OBJETOS ÚTILES ----------------------------------------------------------------------------------------------------------------------------------------------------------------\\
 async function obtenerObjetos() {
-    await fetch(urlBusqueda)
+    await fetch('https://collectionapi.metmuseum.org/public/collection/v1/search?q=&hasImages=true')
         .then((response) => response.json())
         .then((data) => {
-            mostrarObjetos(data.objectIDs);
+            if (data.objectIDs) mostrarObjetos(data.objectIDs, data.total);
         })
         .catch((error) => { console.log("Error al obtener los objetos.", error); });
 }
 
-async function mostrarObjetos(objectIDs) {
+async function mostrarObjetos(objectIDs, total) {
     grilla.innerHTML = '';
+    cardsUnicas.clear(); console.log("Total: ", total, "Objeto: ", objectIDs);
 
-    for (const id of objectIDs) {
+    for (let i = 0; i < total; i++) {
+        for (const id of objectIDs) {
         if (cardsUnicas.size >= 200) break;
 
         const response = await fetch(urlObjeto + id).catch((error) => { console.log(error); });
@@ -93,24 +84,26 @@ async function mostrarObjetos(objectIDs) {
                 <h5 class="dinastia"><strong>Dinastía:</strong> ${dinastiaTraducida}</h5>`;
 
             if (data.additionalImages && data.additionalImages.length > 0) {
-                card += `<button class="masImagenes" onclick="verMasImagenes('${data.additionalImages.join(',')}')">Ver más imágenes</button>`;
+                const imagenes = data.additionalImages;
+                card += `<button class="masImagenes" onclick="verMasImagenes(${imagenes})">Ver más imágenes</button>`;
             }
             card += `</div>`;
 
             cardsUnicas.add(card);
 
-            if (cardsUnicas.size % 4 === 0) objetosPaginaActual();
+            if (cardsUnicas.size === total) break;
+            objetosPaginaActual();
         }
     }
+}
     objetosPaginaActual();
 }
 
-function verMasImagenes(imagenesString) {
-    const arregloImagenes = imagenesString.split(',');
+function verMasImagenes(imagenes) {
     grilla.innerHTML = '';
 
-    arregloImagenes.forEach((imagen) => {
-        grilla.innerHTML += `<img scr="${imagen}" class="imagenesAdicionales" />`;
+    imagenes.split(',').forEach((imagen) => {
+        grilla.innerHTML += `<img scr="${imagen || "sin_imagen.png"}" class="imagenesAdicionales" />`;
     });
 }
 
@@ -118,10 +111,10 @@ function objetosPaginaActual() {
     grilla.innerHTML = '';
     const inicio = (numeroPaginaValor - 1) * 20;
     const final = inicio + 20;
-    const card = [...cardsUnicas];
+    const cards = [...cardsUnicas];
 
     for (let i = inicio; i < final; i++) {
-        if (card[i]) grilla.innerHTML += card[i];
+        if (cards[i]) grilla.innerHTML += cards[i];
     }
 
     actualizarFooter();
@@ -129,7 +122,7 @@ function objetosPaginaActual() {
 
 // PAGINACIÓN ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------\\
 function avanzar() {
-    if (numeroPaginaValor < 10) {
+    if (numeroPaginaValor) {
         numeroPaginaValor++;
         document.getElementById('numeroPagina').innerText = `${numeroPaginaValor}`;
         objetosPaginaActual();
@@ -148,6 +141,12 @@ function retroceder() {
 
 
 function actualizarFooter() {
+    if (cardsUnicas.length >= 20) {
+        document.getElementById('numeroPagina').hidden = true;
+        document.getElementById('anterior').hidden = true;
+        document.getElementById('siguiente').hidden = true;
+    }
+
     document.getElementById('numeroPagina').innerText = `${numeroPaginaValor}`;
     document.getElementById('anterior').hidden = (numeroPaginaValor === 1);
     document.getElementById('siguiente').hidden = (numeroPaginaValor === 10);
@@ -196,7 +195,7 @@ async function cargarLocalizaciones() {
             data.forEach((pais) => {
                 const option = document.createElement('option');
                 if (pais.translations && pais.translations.spa) {
-                    option.value = pais.translations.spa.common;
+                    option.value = pais.name.common;
                     option.textContent = pais.translations.spa.common;
                 } else {
                     option.value = pais.name.common;
