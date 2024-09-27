@@ -4,13 +4,13 @@ const urlBusqueda = 'https://collectionapi.metmuseum.org/public/collection/v1/se
 const urlPaises = 'https://restcountries.com/v3.1/all';
 
 const grilla = document.getElementById('grilla');
-let numeroPaginaTexto = document.getElementById('numeroPagina');
-numeroPaginaTexto.textContent = '1';
-let numeroPaginaValor = parseInt(document.getElementById('numeroPagina').value);
-let cards = new Array(200);
+let numeroPaginaTexto = document.getElementById('numeroPagina').textContent = '1';
+let numeroPaginaValor = parseInt(numeroPaginaTexto);
+const cardsUnicas = new Set();
 
 // BUSCAR   ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\\
-document.getElementById('buscar').addEventListener('click', async () => {
+document.getElementById('buscar').addEventListener('submit', async (evento) => {
+    evento.preventDefault();
     const clave = document.getElementById('clave').value.trim();
     const departamento = document.getElementById('departamento').value;
     const localizacion = document.getElementById('localizacion').value.trim();
@@ -23,22 +23,28 @@ document.getElementById('buscar').addEventListener('click', async () => {
         })
         .catch((error) => { console.log("Error al buscar departamentos.", error); });
 
-    let consulta = 'https://collectionapi.metmuseum.org/public/collection/v1/search?hasImages=true';
-    if (clave) consulta += `&q=${encodeURIComponent(clave)}`;
-    if (id_Departamento) consulta += `&departmentId=${id_Departamento}`;
-    if (localizacion) consulta += `&geoLocation=${encodeURIComponent(localizacion)}`;
+    let consulta = {
+        clave,
+        departamento: id_Departamento,
+        localizacion
+    };
 
-    await fetch(consulta)
-        .then((response) => response.json())
-        .then((data) => {
-            if (data.objectIDs && data.objectIDs.length > 0) {
-                guardarObjetos(data.objectIDs); // Acá quizás es solamente "data"
-            } else {
-                alert("No se encontraron objetos.");
-                document.getElementById('grilla').innerHTML = '<p>No se encontraron resultados.</p>';
-            }
-        })
-        .catch((error) => { console.log("Error en la búsqueda.", error); });;
+    const response = await fetch('/buscar', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams(consulta).toString()
+    });
+
+    const data = await response.json();
+
+    if (data.success && data.objectIDs) {
+        mostrarObjetos(data.objectIDs);
+    } else {
+        alert(data.message || "No se encontraron objetos.");
+        document.getElementById('grilla').innerHTML = '<p>No se encontraron resultados.</p>';
+    }
 });
 
 // OBTENER OBJETOS ÚTILES ----------------------------------------------------------------------------------------------------------------------------------------------------------------\\
@@ -46,53 +52,46 @@ async function obtenerObjetos() {
     await fetch(urlBusqueda)
         .then((response) => response.json())
         .then((data) => {
-            guardarObjetos(data.objectIDs);
+            mostrarObjetos(data.objectIDs);
         })
         .catch((error) => { console.log("Error al obtener los objetos.", error); });
 }
 
-async function guardarObjetos(objectIDs) {
+async function mostrarObjetos(objectIDs) {
     grilla.innerHTML = '';
-    cards = [];
-    let elementosValidos = 0;
 
     for (const id of objectIDs) {
-        if (elementosValidos >= 200) break;
+        if (cardsUnicas.size >= 200) break;
 
-        const response = await fetch(urlObjeto + id);
+        const response = await fetch(urlObjeto + id).catch((error) => { console.log(error); });
         if (response.status === 200) {
             const data = await response.json();
 
-            if (data.primaryImage && data.title && data.culture && data.dynasty) {
-                const imagen = data.primaryImage || data.primaryImageSmall || "sin_imagen.png";
-                const fechaCreacion = data.objectDate ? data.objectDate : "Fecha desconocida";
-                let tituloTraducido = 'Sin título';
-                let culturaTraducida = 'Sin datos';
-                let dinastiaTraducida = 'Sin datos';
+            const imagen = data.primaryImage || data.primaryImageSmall || "sin_imagen.png";
+            const fechaCreacion = data.objectDate ? data.objectDate : "Fecha desconocida";
+            let tituloTraducido = 'Sin título';
+            let culturaTraducida = 'Sin datos';
+            let dinastiaTraducida = 'Sin datos';
 
-                if (data.title) tituloTraducido = await traducirTexto(data.title);
-                if (data.culture) culturaTraducida = await traducirTexto(data.culture);
-                if (data.dynasty) dinastiaTraducida = await traducirTexto(data.dynasty);
+            if (data.title) tituloTraducido = await traducirTexto(data.title);
+            if (data.culture) culturaTraducida = await traducirTexto(data.culture);
+            if (data.dynasty) dinastiaTraducida = await traducirTexto(data.dynasty);
 
-                let card = `
-                    <div class="card">
-                        <img src="${imagen}" title="Creación: ${fechaCreacion}"/>
-                        <h4 class="titulo"><strong>Título:</strong> ${tituloTraducido}</h4>
-                        <h5 class="cultura"><strong>Cultura:</strong> ${culturaTraducida}</h5>
-                        <h5 class="dinastia"><strong>Dinastía:</strong> ${dinastiaTraducida}</h5>`;
+            let card = `
+            <div class="card">
+                <img src="${imagen}" title="Creación: ${fechaCreacion}"/>
+                <h4 class="titulo"><strong>Título:</strong> ${tituloTraducido}</h4>
+                <h5 class="cultura"><strong>Cultura:</strong> ${culturaTraducida}</h5>
+                <h5 class="dinastia"><strong>Dinastía:</strong> ${dinastiaTraducida}</h5>`;
 
-                if (data.additionalImages && data.additionalImages.length > 0) {
-                    card += `<button class="masImagenes" onclick="verMasImagenes('${data.additionalImages.join(',')}')">Ver más imágenes</button>`;
-                }
-                card += `</div>`;
-
-                cards.push(card);
-                elementosValidos++;
-
-                if (cards.length % 20 === 0) {
-                    objetosPaginaActual();
-                }
+            if (data.additionalImages && data.additionalImages.length > 0) {
+                card += `<button class="masImagenes" onclick="verMasImagenes('${data.additionalImages.join(',')}')">Ver más imágenes</button>`;
             }
+            card += `</div>`;
+
+            cardsUnicas.add(card);
+
+            if (cardsUnicas.size % 4 === 0) objetosPaginaActual();
         }
     }
     objetosPaginaActual();
@@ -110,12 +109,11 @@ function verMasImagenes(imagenesString) {
 function objetosPaginaActual() {
     grilla.innerHTML = '';
     const inicio = (numeroPaginaValor - 1) * 20;
-    const final = Math.min(inicio + 20, cards.length);
+    const final = inicio + 20;
+    const card = [...cardsUnicas];
 
     for (let i = inicio; i < final; i++) {
-        if (cards[i]) {
-            grilla.innerHTML += cards[i];
-        }
+        if (card[i]) grilla.innerHTML += card[i];
     }
 
     actualizarFooter();
@@ -125,7 +123,7 @@ function objetosPaginaActual() {
 function avanzar() {
     if (numeroPaginaValor < 10) {
         numeroPaginaValor++;
-        numeroPaginaTexto.textContent = `${numeroPaginaValor}`;
+        document.getElementById('numeroPagina').innerText = `${numeroPaginaValor}`;
         objetosPaginaActual();
         actualizarFooter();
     }
@@ -134,7 +132,7 @@ function avanzar() {
 function retroceder() {
     if (numeroPaginaValor > 1) {
         numeroPaginaValor--;
-        numeroPaginaTexto.textContent = `${numeroPaginaValor}`;
+        document.getElementById('numeroPagina').innerText = `${numeroPaginaValor}`;
         objetosPaginaActual();
         actualizarFooter();
     }
@@ -142,8 +140,9 @@ function retroceder() {
 
 
 function actualizarFooter() {
+    document.getElementById('numeroPagina').innerText = `${numeroPaginaValor}`;
     document.getElementById('anterior').hidden = (numeroPaginaValor === 1);
-    document.getElementById('siguiente').hidden = (numeroPaginaValor * 20 >= cards.length);
+    document.getElementById('siguiente').hidden = (numeroPaginaValor === 10);
 }
 
 // CARGAR DEPARTAMENTOS   ----------------------------------------------------------------------------------------------------------------------------------------------------------------\\
@@ -208,109 +207,3 @@ window.onload = async function () {
     await cargarLocalizaciones();
     await obtenerObjetos();
 }
-
-
-
-
-
-
-
-// Parte I
-
-// MOSTRAR TODOS LOS OBJETOS (con imagen supuestamente) (20 por página)    ---------------------------------------------------------------------------------------------------------------\\
-/*const items = new Array(200);
-fetch(urlBusqueda)
-    .then((response) => response.json())
-    .then((data) => {
-        mostrarObjetos(data.objectIDs.slice(0, 20));
-        items.fill(data.objectIDs);
-    })
-    .catch((error) => { console.log(error); });
-
-async function mostrarObjetos(objectIDs) {
-    let card = '';
-    for (let objectID of objectIDs) {
-        await fetch(urlObjeto + objectID)
-            .then((response) => response.json())
-            .then(async (data) => {
-                const imagen = data.primaryImage ? data.primaryImage : data.primaryImageSmall;
-                let fechaCreacion = data.objectDate ? data.objectDate : "Fecha desconocida";
-                let tituloTraducido = 'Sin título';
-                let culturaTraducida = 'Sin datos';
-                let dinastiaTraducida = 'Sin datos';
-
-                if (data.title) tituloTraducido = await traducirTexto(data.title);
-                if (data.culture) culturaTraducida = await traducirTexto(data.culture);
-                if (data.dynasty) dinastiaTraducida = await traducirTexto(data.dynasty);
-
-                if (data.additionalImages && data.additionalImages.length > 0) {
-                    card += `
-                <div class="card">
-                    <img src="${imagen ? imagen : "sin_imagen.png"}" title="Creación: ${fechaCreacion}"/>
-                    <h4 class="titulo"><strong>Título:</strong> ${tituloTraducido}</h4>
-                    <h5 class="cultura"><strong>Cultura:</strong> ${culturaTraducida}</h5>
-                    <h5 class="dinastia"><strong>Dinastía:</strong> ${dinastiaTraducida}</h5>
-                    <button class="masImagenes" onclick="verMasImagenes(${objectID})">Ver más imágenes</button>
-                </div>`;
-                } else {
-                    card +=
-                        `<div class="card">
-                    <img src="${imagen ? imagen : "sin_imagen.png"}" title="Creación: ${fechaCreacion}"/>
-                    <h4 class="titulo"><strong>Título:</strong> ${tituloTraducido}</h4>
-                    <h5 class="cultura"><strong>Cultura:</strong> ${culturaTraducida}</h5>
-                    <h5 class="dinastia"><strong>Dinastía:</strong> ${dinastiaTraducida}</h5>
-                </div>`;
-                }
-
-                const grilla = document.getElementById('grilla');
-                grilla.innerHTML = card;
-            })
-            .catch((error) => { console.log(error); });
-    }
-}*/
-
-
-
-// Parte II
-
-/*
-const fetchPromises = objectIDs.map(id => fetch(urlObjeto + id).then(response => response.json()));
-    const objetos = await Promise.all(fetchPromises);
-
-    objetos.forEach(async (data) => {
-        const imagen = data.primaryImage || data.primaryImageSmall || "sin_imagen.png";
-        const fechaCreacion = data.objectDate ? data.objectDate : "Fecha desconocida";
-        let tituloTraducido = 'Sin título';
-        let culturaTraducida = 'Sin datos';
-        let dinastiaTraducida = 'Sin datos';
-
-        if (data.title && data.title != '') tituloTraducido = await traducirTexto(data.title); titulo = true;
-        if (data.culture && data.culture != '') culturaTraducida = await traducirTexto(data.culture); cultura = true;
-        if (data.dynasty && data.dynasty != '') dinastiaTraducida = await traducirTexto(data.dynasty); dinastia = true;
-        if (data.additionalImages && data.additionalImages.length > 0) imagenes = true;
-
-        if (imagen && titulo && cultura && dinastia) {
-            card += `
-                <div class="card">
-                    <img src="${imagen}" title="Creación: ${fechaCreacion}"/>
-                    <h4 class="titulo"><strong>Título:</strong> ${tituloTraducido}</h4>
-                    <h5 class="cultura"><strong>Cultura:</strong> ${culturaTraducida}</h5>
-                    <h5 class="dinastia"><strong>Dinastía:</strong> ${dinastiaTraducida}</h5>
-                </div>`;
-        } else if (imagen && imagenes && titulo && cultura && dinastia) {
-            card += `
-                <div class="card">
-                    <img src="${imagen}" title="Creación: ${fechaCreacion}"/>
-                    <h4 class="titulo"><strong>Título:</strong> ${tituloTraducido}</h4>
-                    <h5 class="cultura"><strong>Cultura:</strong> ${culturaTraducida}</h5>
-                    <h5 class="dinastia"><strong>Dinastía:</strong> ${dinastiaTraducida}</h5>
-                    <button class="masImagenes" onclick="verMasImagenes(${data.additionalImages})">Ver más imágenes</button>
-                </div>`;
-        }
-        cards.push(card);
-
-        if (cards.length === objectIDs.length) {
-            objetosPaginaActual();
-        }
-    });
-*/

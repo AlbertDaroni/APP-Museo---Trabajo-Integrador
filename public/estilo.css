@@ -1,15 +1,21 @@
 body {
-    background-color: rgb(50, 50, 50);
     font-family: sans-serif;
     align-items: center;
+    background-image: url('imagen_museoNY.jpeg');
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    height: 100vh;
+    margin: 0;
+    background-color: rgb(50, 50, 50);
 }
 .container {
     display: flex;
     flex-direction: column;
 }
 #titulo {
-    color: white;
-    border-bottom: 1px solid gray;
+    border-bottom: 1px solid black;
     margin: 20px;
     font-size: 50px;
     text-align: center;
@@ -51,7 +57,7 @@ body {
 #buscador {
     display: flex;
     flex-direction: row;
-    border-bottom: 1px solid gray;
+    border-bottom: 1px solid black;
     align-items: center;
     justify-content: center;
     margin: 20px;
@@ -60,10 +66,16 @@ body {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     margin: 10px;
+    justify-content: space-around;
 }
 .card {
     margin: 30px;
-    color: white;
+    border-radius: 10px;
+    color: black;
+    background-color: hsla(0, 0%, 50%, 0.3);
+}
+.card:hover {
+    background-color: hsla(0, 0%, 70%, 0.3);
 }
 .card img {
     width: 100%;
@@ -85,7 +97,7 @@ body {
     border-radius: 5px;
 }
 #footer {
-    border-top: 1px solid gray;
+    border-top: 1px solid black;
     align-items: center;
     justify-content: center;
     margin: 20px;
@@ -104,5 +116,5 @@ body {
     color: white;
     margin: 10px;
     padding: 10px;
-    background-color: mediumturquoise;
+    background-color: chocolate;
 }
