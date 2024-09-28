@@ -3,6 +3,7 @@ const urlObjeto = 'https://collectionapi.metmuseum.org/public/collection/v1/obje
 const urlPaises = 'https://restcountries.com/v3.1/all';
 
 const grilla = document.getElementById('grilla');
+const cargando = document.getElementById('cargando');
 let numeroPaginaTexto = document.getElementById('numeroPagina').textContent = '1';
 let numeroPaginaValor = parseInt(numeroPaginaTexto);
 let cards = [];
@@ -10,6 +11,7 @@ let cards = [];
 // BUSCAR   ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\\
 document.getElementById('form').addEventListener('submit', async (evento) => {
     evento.preventDefault();
+    cargando.style.display = 'block';
 
     const clave = document.getElementById('clave').value || '' || 'flowers';
     const departamento = document.getElementById('departamento').value;
@@ -20,19 +22,19 @@ document.getElementById('form').addEventListener('submit', async (evento) => {
     if (clave) consulta += `&q=${clave}`;
     if (departamento) consulta += `&departmentId=${departamento}`;
     if (localizacion) consulta += `&geoLocation=${localizacion}`;
-    
-    console.log(consulta);
+
     await obtenerDatos(consulta);
 });
 
 // OBTENER OBJETOS ÚTILES ----------------------------------------------------------------------------------------------------------------------------------------------------------------\\
 async function obtenerDatos(consulta) {
+    cargando.style.display = 'block';
     try {
         const response = await fetch(consulta);
         if (response.status === 200) {
             const data = await response.json();
             if (data.total > 0) {
-                cards = []; console.log("Total:", data.objectIDs.length, " Tamaño arreglo:", cards.length);
+                cards = [];
                 obtenerInformacionObjetos(data.objectIDs);
             } else {
                 alert("No se encontraron resultados");
@@ -66,7 +68,7 @@ async function obtenerInformacionObjetos(objectIDs) {
                 card += `<button class="masImagenes" onclick="verMasImagenes('${imagenes}')">Ver más imágenes</button>`;
             }
             card += `</div>`;
-            console.log("Objeto agregado.");
+
             cards.push(card);
         }
     });
@@ -75,8 +77,10 @@ async function obtenerInformacionObjetos(objectIDs) {
     mostrarObjetos();
 }
 
+// MOSTRAR  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\\
 async function mostrarObjetos() {
     grilla.innerHTML = '';
+    cargando.style.display = 'none';
     const inicio = (numeroPaginaValor - 1) * 20;
     const final = Math.min(inicio + 20, cards.length);
 
@@ -186,6 +190,7 @@ async function traducirTexto(texto) {
 
 // Llamar a estas funciones para ejecutarse primero al cargar la página
 window.onload = async function () {
+    cargando.style.display = 'block';
     await obtenerDepartamentos();
     await cargarLocalizaciones();
     await obtenerDatos('https://collectionapi.metmuseum.org/public/collection/v1/search?q=&hasImages=true');

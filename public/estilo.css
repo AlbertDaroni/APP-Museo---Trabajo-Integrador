@@ -66,6 +66,7 @@ body {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     margin: 10px;
+    align-items: center;
     justify-content: space-around;
 }
 .card {
@@ -78,6 +79,13 @@ body {
     background-color: hsla(0, 0%, 70%, 0.3);
 }
 .card img {
+    width: 100%;
+    height: auto;
+}
+#cargando {
+    margin-left: 45%;
+}
+.masImagenes {
     width: 100%;
     height: auto;
 }
