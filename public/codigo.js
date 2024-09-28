@@ -5,129 +5,101 @@ const urlPaises = 'https://restcountries.com/v3.1/all';
 const grilla = document.getElementById('grilla');
 let numeroPaginaTexto = document.getElementById('numeroPagina').textContent = '1';
 let numeroPaginaValor = parseInt(numeroPaginaTexto);
-const cards = new Set();
+let cards = [];
 
 // BUSCAR   ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\\
 document.getElementById('form').addEventListener('submit', async (evento) => {
     evento.preventDefault();
 
-    const clave = document.getElementById('clave')?.value || 'flowers';
-    const departamento = document.getElementById('departamento')?.value;
-    const localizacion = document.getElementById('localizacion')?.value;
+    const clave = document.getElementById('clave').value || '' || 'flowers';
+    const departamento = document.getElementById('departamento').value;
+    const localizacion = document.getElementById('localizacion').value;
     document.getElementById('numeroPagina').innerText = '1';
-    actualizarFooter();
 
-    let consulta = `https://collectionapi.metmuseum.org/public/collection/v1/search?`;
-    if (clave.value && !departamento.value && !localizacion.value) {
-        consulta += `q=${clave.value}&hasImages=true`;
-    } else if (!clave.value && departamento.value && !localizacion.value) {
-        consulta += `q=&hasImages=true&departmentId=${departamento.value}`;
-    } else if (!clave.value && !departamento.value && localizacion.value) {
-        consulta += `q=&hasImages=true&geoLocation=${localizacion.value}`;
-    } else if (clave.value && departamento.value && !localizacion.value) {
-        consulta += `q=${clave.value}&hasImages=true&departmentId=${departamento.value}`;
-    } else if (!clave.value && departamento.value && localizacion.value) {
-        consulta += `q=&hasImages=true&departmentId=${departamento.value}&geoLocation=${localizacion.value}`;
-    } else if (clave.value && !departamento.value && localizacion.value) {
-        consulta += `q=${clave.value}&hasImages=true&geoLocation=${localizacion.value}`;
-    } else if (clave.value && departamento.value && localizacion.value) {
-        consulta += `q=${clave.value}&hasImages=true&departmentId=${departamento.value}&geoLocation=${localizacion.value}`;
-    } else {
-        consulta += `q=&hasImages=true`;
-    }
+    let consulta = `https://collectionapi.metmuseum.org/public/collection/v1/search?hasImages=true`;
+    if (clave) consulta += `&q=${clave}`;
+    if (departamento) consulta += `&departmentId=${departamento}`;
+    if (localizacion) consulta += `&geoLocation=${localizacion}`;
+    
     console.log(consulta);
-
-    await fetch(consulta)
-        .then((response) => response.json())
-        .then((data) => {
-            if (data.objectIDs) mostrarObjetos(data.objectIDs);
-            else alert("No se encontraron resultados");
-        })
-        .catch((error) => { console.log("Error al hacer la consulta en la búsqueda.", error); });
+    await obtenerDatos(consulta);
 });
 
 // OBTENER OBJETOS ÚTILES ----------------------------------------------------------------------------------------------------------------------------------------------------------------\\
-async function obtenerObjetos() {
-    await fetch('https://collectionapi.metmuseum.org/public/collection/v1/search?q=&hasImages=true')
-        .then((response) => response.json())
-        .then((data) => {
-            for (let index = 0; index < 6; index++) {
-                if (i != 6) setInterval(mostrarObjetos(data.objectIDs.slice(0, 20)), 5000);
+async function obtenerDatos(consulta) {
+    try {
+        const response = await fetch(consulta);
+        if (response.status === 200) {
+            const data = await response.json();
+            if (data.total > 0) {
+                cards = []; console.log("Total:", data.objectIDs.length, " Tamaño arreglo:", cards.length);
+                obtenerInformacionObjetos(data.objectIDs);
+            } else {
+                alert("No se encontraron resultados");
             }
-        })
-        .catch((error) => { console.log("Error al obtener los objetos.", error); });
+        }
+    } catch (error) { console.log("Error al traer los datos.", error); }
 }
 
-async function mostrarObjetos(objectIDs) {
-    grilla.innerHTML = '';
-    cards.clear();
-    console.log("Total: ", objectIDs.length);
-
-    for (let i = 0; i < objectIDs.length; i++) {
-        if (cards.size >= 200) break;
-
-        const id = objectIDs[i];
-
-        const response = await fetch(urlObjeto + id).catch((error) => { console.log(error); });
+async function obtenerInformacionObjetos(objectIDs) {
+    const promesas = objectIDs.slice(0, 500).map(async (id) => {
+        const response = await fetch(urlObjeto + id);
         if (response.status === 200) {
-            const data = await response.json(); console.log(data.length);
+            if (cards.length >= 200) return;
+
+            const data = await response.json();
 
             const imagen = data.primaryImage || data.primaryImageSmall || "sin_imagen.png";
             const fechaCreacion = data.objectDate ? data.objectDate : "Fecha desconocida";
-            let tituloTraducido = 'Sin título';
-            let culturaTraducida = 'Sin datos';
-            let dinastiaTraducida = 'Sin datos';
-
-            if (data.title) tituloTraducido = await traducirTexto(data.title);
-            if (data.culture) culturaTraducida = await traducirTexto(data.culture);
-            if (data.dynasty) dinastiaTraducida = await traducirTexto(data.dynasty);
+            const tituloTraducido = data.title ? await traducirTexto(data.title) : "Sin título";
+            const culturaTraducida = data.culture ? await traducirTexto(data.culture) : "Sin datos";
+            const dinastiaTraducida = data.dynasty ? await traducirTexto(data.dynasty) : "Sin datos";
 
             let card = `
-            <div class="card">
-                <img src="${imagen}" title="Creación: ${fechaCreacion}"/>
-                <h4 class="titulo"><strong>Título:</strong> ${tituloTraducido}</h4>
-                <h5 class="cultura"><strong>Cultura:</strong> ${culturaTraducida}</h5>
-                <h5 class="dinastia"><strong>Dinastía:</strong> ${dinastiaTraducida}</h5>`;
-
+                    <div class="card">
+                        <img src="${imagen}" title="Creación: ${fechaCreacion}"/>
+                        <h4 class="titulo"><strong>Título:</strong> ${tituloTraducido}</h4>
+                        <h5 class="cultura"><strong>Cultura:</strong> ${culturaTraducida}</h5>
+                        <h5 class="dinastia"><strong>Dinastía:</strong> ${dinastiaTraducida}</h5>`;
             if (data.additionalImages && data.additionalImages.length > 0) {
                 const imagenes = data.additionalImages.join(',');
                 card += `<button class="masImagenes" onclick="verMasImagenes('${imagenes}')">Ver más imágenes</button>`;
             }
             card += `</div>`;
-
-            if (![...cards].some(cardExistente => cardExistente === card)) cards.add(card);
-            if (cards.size % 20 === 0) objetosPaginaActual();
+            console.log("Objeto agregado.");
+            cards.push(card);
         }
+    });
+
+    await Promise.all(promesas);
+    mostrarObjetos();
+}
+
+async function mostrarObjetos() {
+    grilla.innerHTML = '';
+    const inicio = (numeroPaginaValor - 1) * 20;
+    const final = Math.min(inicio + 20, cards.length);
+
+    for (let i = inicio; i < final; i++) {
+        if (cards[i]) grilla.innerHTML += cards[i];
     }
-    if (cards.size < 20) objetosPaginaActual();
+
+    actualizarFooter();
 }
 
 function verMasImagenes(imagenes) {
     grilla.innerHTML = '';
     imagenes.split(',').forEach((imagen) => {
-        grilla.innerHTML += `<img scr="${imagen || "sin_imagen.png"}" class="imagenesAdicionales" />`;
+        grilla.innerHTML += `<img src="${imagen || "sin_imagen.png"}" class="imagenesAdicionales" />`;
     });
-}
-
-function objetosPaginaActual() {
-    actualizarFooter();
-    grilla.innerHTML = '';
-    const cardsArreglo = Array.from(cards);
-    const inicio = (numeroPaginaValor - 1) * 20;
-    const final = inicio + 20;
-
-    for (let i = inicio; i < final; i++) {
-        if (cardsArreglo[i]) grilla.innerHTML += cardsArreglo[i];
-    }
 }
 
 // PAGINACIÓN ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------\\
 function avanzar() {
-    if (numeroPaginaValor) {
+    if (numeroPaginaValor * 20 < cards.length) {
         numeroPaginaValor++;
         document.getElementById('numeroPagina').innerText = `${numeroPaginaValor}`;
-        objetosPaginaActual();
-        actualizarFooter();
+        mostrarObjetos();
     }
 }
 
@@ -135,20 +107,14 @@ function retroceder() {
     if (numeroPaginaValor > 1) {
         numeroPaginaValor--;
         document.getElementById('numeroPagina').innerText = `${numeroPaginaValor}`;
-        objetosPaginaActual();
-        actualizarFooter();
+        mostrarObjetos();
     }
 }
 
 
 function actualizarFooter() {
-    const paginasTotales = Math.ceil(cards.size / 20);
-
-    if (cards.size <= 20) {
-        document.getElementById('footer').style.display = 'none';
-    } else {
-        document.getElementById('footer').style.display = 'block';
-    }
+    const paginasTotales = Math.ceil(cards.length / 20);
+    document.getElementById('footer').style.display = paginasTotales > 1 ? 'block' : 'none';
 
     document.getElementById('numeroPagina').innerText = `${numeroPaginaValor}`;
     document.getElementById('anterior').hidden = (numeroPaginaValor === 1);
@@ -171,6 +137,7 @@ async function obtenerDepartamentos() {
     const option = document.createElement('option');
     option.value = ''; option.textContent = '';
     departamentoSelect.appendChild(option);
+
     departamentosTraducidos.forEach((dep) => {
         const option = document.createElement('option');
         option.value = dep.id;
@@ -221,5 +188,5 @@ async function traducirTexto(texto) {
 window.onload = async function () {
     await obtenerDepartamentos();
     await cargarLocalizaciones();
-    await obtenerObjetos();
+    await obtenerDatos('https://collectionapi.metmuseum.org/public/collection/v1/search?q=&hasImages=true');
 }
